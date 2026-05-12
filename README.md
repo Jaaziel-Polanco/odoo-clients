@@ -155,27 +155,43 @@ El boton "Sync ahora" en el header ejecuta el mismo flujo manualmente.
 El proyecto se distribuye como dos contenedores: `postgres` (datos) y `app`
 (Next.js 16 standalone). Las migraciones se aplican automáticamente al arrancar.
 
-### Opción A — Easypanel (recomendado si ya tienes Easypanel)
+### Opción A — Easypanel (recomendado)
 
-Easypanel maneja Traefik con HTTPS automático via Let's Encrypt. Hay dos
-caminos:
+**Importante**: en Easypanel **no uses Compose** para esta app. El servicio
+Compose de Easypanel no construye imágenes desde Dockerfile de forma confiable
+— por eso si pones `docker-compose.easypanel.yml` con `build: .` ves que solo
+Postgres arranca y el contenedor de la app nunca aparece.
 
-**A.1 — Compose service (mas simple)**
+Usa **dos servicios separados** en el mismo proyecto Easypanel:
 
-Usa el archivo `docker-compose.easypanel.yml` ya incluido. No tiene `ports:`
-bindeados ni `container_name` — Easypanel maneja el routing via dominio.
+#### Paso 1 — Crear el Postgres
 
-1. En Easypanel: **+ Service > Compose**
-2. Source: GitHub repo, branch `main`, build path `/`
-3. File: `docker-compose.easypanel.yml`
-4. En **Environment** pega las variables (sin las que defaults: APP_BIND, APP_PORT, etc.):
+1. En tu proyecto: **+ Service → Template → Postgres**
+2. Nombre del servicio: `postgres`
+3. Versión: `16-alpine` (o la default)
+4. **User**: `greensun`, **Password**: genera uno fuerte, **Database**: `odoo_mirror`
+5. **Create**
+
+Easypanel te muestra una **URL de conexión interna** parecida a:
+```
+postgres://greensun:<password>@<proyecto>_postgres:5432/odoo_mirror
+```
+Cópiala — la necesitas para el siguiente paso.
+
+#### Paso 2 — Crear la App
+
+1. **+ Service → App**
+2. Nombre: `app` (o `greensun`)
+3. **Source**: GitHub → tu repo, branch `main`
+4. **Build**: Dockerfile (path `Dockerfile`)
+5. **Domains**: agrega tu dominio (ej `greensun.tuempresa.com`) → **port 3000**
+   → activa HTTPS (Let's Encrypt automático)
+6. **Environment**: pega esto (reemplaza valores):
 
 ```env
-POSTGRES_USER=greensun
-POSTGRES_PASSWORD=<password-fuerte>
-POSTGRES_DB=odoo_mirror
+DATABASE_URL=postgres://greensun:<password>@<proyecto>_postgres:5432/odoo_mirror
 ODOO_URL=https://greensunrd.odoo.com
-ODOO_DB=asettech-greensun-main-XXX
+ODOO_DB=asettech-greensun-main-20525546
 ODOO_USERNAME=tu-usuario@empresa.com
 ODOO_API_KEY=<api-key-real>
 APP_PASSWORD=<password-panel>
@@ -184,28 +200,38 @@ SYNC_CRON_ENABLED=true
 COOKIE_SECURE=true
 ```
 
-5. En **Domains** del servicio `app`: agrega tu dominio (ej. `greensun.tuempresa.com`),
-   port `3000`, HTTPS activo. Easypanel pide el cert a Let's Encrypt
-   automáticamente.
-6. **Deploy**.
+7. **Deploy**
 
-Cuando termine, abre `https://greensun.tuempresa.com`.
+El build toma 2-4 min la primera vez. Cuando termine:
+- La app corre las migraciones automáticamente al arrancar
+- Healthcheck `/api/health` valida que todo esté bien
+- Tu dominio queda disponible con HTTPS
 
-**A.2 — App + Managed Postgres (mas escalable)**
+#### Verificación
 
-Si prefieres usar el servicio de Postgres administrado de Easypanel:
+```bash
+# Desde tu máquina
+curl https://greensun.tuempresa.com/api/health
 
-1. Crea servicio **Postgres** en Easypanel → toma nota del internal URL
-   (ej. `postgres://greensun:xxx@$(PROJECT_NAME)_postgres:5432/odoo_mirror`)
-2. Crea servicio **App** > Source: GitHub repo + Dockerfile
-3. Build path: `/`, Dockerfile: `Dockerfile`
-4. **Environment**: pega todas las vars, incluyendo:
-   - `DATABASE_URL=<el URL que te dio Postgres>`
-   - El resto igual que A.1
-5. **Domains**: tu dominio → port `3000`
-6. **Deploy**
+# En Easypanel UI: ver logs de la app, deberías ver:
+# [migrate] aplicando migraciones desde /app/lib/db/migrations...
+# [migrate] migraciones aplicadas
+# ▲ Next.js 16.2.6
+# ✓ Ready in 0ms
+```
 
-Las migraciones corren solas al arrancar el container.
+#### Si algo falla
+
+- **App no construye**: revisa logs de build en Easypanel. Suelen ser errores
+  de pnpm install o de pnpm build.
+- **App construye pero crashea**: revisa logs runtime. Casi siempre es env var
+  faltante o `DATABASE_URL` mal apuntada al postgres service interno.
+- **No puede conectar a Postgres**: el hostname dentro del network de Easypanel
+  es `<nombre-proyecto>_postgres`. Confirma el nombre exacto desde la pestaña
+  Connection del servicio Postgres.
+- **Login no funciona**: si `COOKIE_SECURE=true` pero tu dominio aún no tiene
+  HTTPS activo, el browser no acepta la cookie. Espera a que Let's Encrypt
+  termine de emitir el cert (1-2 min).
 
 ### Opción B — Docker Compose manual (sin Easypanel)
 
