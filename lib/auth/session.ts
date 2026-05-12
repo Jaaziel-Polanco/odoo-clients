@@ -9,13 +9,16 @@ export interface SessionData {
 
 export const SESSION_COOKIE_NAME = "greensun-session";
 
+const cookieSecure =
+  env.COOKIE_SECURE ?? env.NODE_ENV === "production";
+
 export const sessionOptions: SessionOptions = {
   password: env.SESSION_SECRET,
   cookieName: SESSION_COOKIE_NAME,
   cookieOptions: {
     httpOnly: true,
     sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    secure: cookieSecure,
     path: "/",
     maxAge: 60 * 60 * 12,
   },

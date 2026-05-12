@@ -25,6 +25,11 @@ const envSchema = z.object({
     .default("true")
     .transform((v) => v.toLowerCase() === "true"),
 
+  COOKIE_SECURE: z
+    .string()
+    .optional()
+    .transform((v) => (v == null ? undefined : v.toLowerCase() === "true")),
+
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
@@ -44,6 +49,7 @@ const STUB_ENV: Env = {
   INACTIVITY_DEFAULT_DAYS: 90,
   SYNC_CRON: "5 * * * *",
   SYNC_CRON_ENABLED: false,
+  COOKIE_SECURE: undefined,
   NODE_ENV: "production",
 };
 

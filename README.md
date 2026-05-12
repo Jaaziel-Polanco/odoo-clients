@@ -150,17 +150,75 @@ El boton "Sync ahora" en el header ejecuta el mismo flujo manualmente.
 - El `proxy.ts` bloquea todas las rutas excepto `/login` y `/api/auth/login`.
 - Cada route handler revalida sesion con `requireAuth()`.
 
-## Deploy en producción (Docker Compose)
+## Deploy en producción
 
 El proyecto se distribuye como dos contenedores: `postgres` (datos) y `app`
 (Next.js 16 standalone). Las migraciones se aplican automáticamente al arrancar.
+
+### Opción A — Easypanel (recomendado si ya tienes Easypanel)
+
+Easypanel maneja Traefik con HTTPS automático via Let's Encrypt. Hay dos
+caminos:
+
+**A.1 — Compose service (mas simple)**
+
+Usa el archivo `docker-compose.easypanel.yml` ya incluido. No tiene `ports:`
+bindeados ni `container_name` — Easypanel maneja el routing via dominio.
+
+1. En Easypanel: **+ Service > Compose**
+2. Source: GitHub repo, branch `main`, build path `/`
+3. File: `docker-compose.easypanel.yml`
+4. En **Environment** pega las variables (sin las que defaults: APP_BIND, APP_PORT, etc.):
+
+```env
+POSTGRES_USER=greensun
+POSTGRES_PASSWORD=<password-fuerte>
+POSTGRES_DB=odoo_mirror
+ODOO_URL=https://greensunrd.odoo.com
+ODOO_DB=asettech-greensun-main-XXX
+ODOO_USERNAME=tu-usuario@empresa.com
+ODOO_API_KEY=<api-key-real>
+APP_PASSWORD=<password-panel>
+SESSION_SECRET=<openssl rand -hex 32>
+SYNC_CRON_ENABLED=true
+COOKIE_SECURE=true
+```
+
+5. En **Domains** del servicio `app`: agrega tu dominio (ej. `greensun.tuempresa.com`),
+   port `3000`, HTTPS activo. Easypanel pide el cert a Let's Encrypt
+   automáticamente.
+6. **Deploy**.
+
+Cuando termine, abre `https://greensun.tuempresa.com`.
+
+**A.2 — App + Managed Postgres (mas escalable)**
+
+Si prefieres usar el servicio de Postgres administrado de Easypanel:
+
+1. Crea servicio **Postgres** en Easypanel → toma nota del internal URL
+   (ej. `postgres://greensun:xxx@$(PROJECT_NAME)_postgres:5432/odoo_mirror`)
+2. Crea servicio **App** > Source: GitHub repo + Dockerfile
+3. Build path: `/`, Dockerfile: `Dockerfile`
+4. **Environment**: pega todas las vars, incluyendo:
+   - `DATABASE_URL=<el URL que te dio Postgres>`
+   - El resto igual que A.1
+5. **Domains**: tu dominio → port `3000`
+6. **Deploy**
+
+Las migraciones corren solas al arrancar el container.
+
+### Opción B — Docker Compose manual (sin Easypanel)
 
 ### 1. Preparar el server
 
 Requisitos:
 - Docker Engine 24+ y `docker compose` plugin
 - 2GB RAM mínimo (1GB postgres + 1GB app)
-- Puerto 3000 abierto (o el que configures en `APP_PORT`)
+- Puerto 3000 disponible en localhost (o el que configures en `APP_PORT`)
+
+**Co-existencia con otros stacks**: Postgres usa `expose:` (no bind a host),
+nunca toca un puerto del server. La app bindea por default `0.0.0.0:3000`
+(accesible desde la red). Si el puerto 3000 está ocupado, cambia `APP_PORT`.
 
 ```bash
 git clone <tu-repo> /opt/greensun
@@ -179,6 +237,10 @@ Edita `.env`. Los críticos (no usar valores del ejemplo):
 | `SESSION_SECRET`    | ≥32 chars. Genera con: `openssl rand -hex 32`                               |
 | `ODOO_URL`          | URL pública de tu Odoo (SaaS o self-hosted)                                 |
 | `ODOO_API_KEY`      | API key generada en Odoo (Preferences > Account Security)                   |
+| `APP_PORT`          | Puerto en el host. Default `3000`. Cambia si está ocupado.                  |
+| `APP_BIND`          | Default `0.0.0.0` (expuesto a la red). `127.0.0.1` solo si hay reverse proxy. |
+| `COOKIE_SECURE`     | Default `false` (HTTP). Cambia a `true` solo si tienes HTTPS/proxy TLS.     |
+| `COMPOSE_PROJECT_NAME` | Opcional. Default `greensun`. Cambia si corres varios stacks.            |
 
 ### 3. Build y arrancar
 
@@ -205,7 +267,14 @@ docker compose -f docker-compose.prod.yml logs -f app
 curl http://localhost:3000/api/health
 ```
 
-Abre `http://server-ip:3000` (o el dominio si tienes reverse proxy delante).
+Abre `http://server-ip:3000` desde cualquier equipo en la red, o
+`http://localhost:3000` desde el server. Por default está expuesto a la red
+sin TLS — solo si tu red es interna/confiable.
+
+> **Advertencia de seguridad**: sin HTTPS, el password y la cookie de sesión
+> viajan en texto plano por la red. Para producción expuesta a internet pública
+> es muy recomendable poner Caddy/nginx/traefik delante con un cert
+> Let's Encrypt (gratis y automático), y cambiar `COOKIE_SECURE=true`.
 
 ### 5. Primer sync
 
