@@ -49,13 +49,13 @@ Llena en `.env.local`:
 ### 3. Levantar Postgres local
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 Verifica:
 
 ```bash
-docker compose ps
+docker compose -f docker-compose.dev.yml ps
 ```
 
 ### 4. Aplicar schema a la DB
@@ -271,7 +271,7 @@ Edita `.env`. Los críticos (no usar valores del ejemplo):
 ### 3. Build y arrancar
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.yml up -d --build
 ```
 
 El build toma 2-4 min la primera vez. Los contenedores arrancan en orden:
@@ -284,10 +284,10 @@ El build toma 2-4 min la primera vez. Los contenedores arrancan en orden:
 
 ```bash
 # Status
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.yml ps
 
 # Logs en tiempo real
-docker compose -f docker-compose.prod.yml logs -f app
+docker compose -f docker-compose.yml logs -f app
 
 # Health
 curl http://localhost:3000/api/health
@@ -311,23 +311,23 @@ horario quedará configurado por `SYNC_CRON_ENABLED=true`.
 
 ```bash
 # Reiniciar app sin tocar DB
-docker compose -f docker-compose.prod.yml restart app
+docker compose -f docker-compose.yml restart app
 
 # Actualizar a nueva versión
 git pull
-docker compose -f docker-compose.prod.yml up -d --build app
+docker compose -f docker-compose.yml up -d --build app
 
 # Backup manual de Postgres
-docker compose -f docker-compose.prod.yml exec postgres \
+docker compose -f docker-compose.yml exec postgres \
   pg_dump -U $POSTGRES_USER $POSTGRES_DB | gzip > backups/$(date +%F).sql.gz
 
 # Restore
 gunzip < backups/2026-05-12.sql.gz | \
-  docker compose -f docker-compose.prod.yml exec -T postgres \
+  docker compose -f docker-compose.yml exec -T postgres \
   psql -U $POSTGRES_USER $POSTGRES_DB
 
 # Shell en la DB
-docker compose -f docker-compose.prod.yml exec postgres \
+docker compose -f docker-compose.yml exec postgres \
   psql -U $POSTGRES_USER $POSTGRES_DB
 
 # Trigger sync manual via HTTP (necesita login antes)
@@ -350,7 +350,7 @@ La cookie de sesión usa `secure: true` cuando `NODE_ENV=production`, requiere H
 ### Backup automático con cron del host
 
 ```cron
-0 3 * * * cd /opt/greensun && docker compose -f docker-compose.prod.yml exec -T postgres \
+0 3 * * * cd /opt/greensun && docker compose -f docker-compose.yml exec -T postgres \
   pg_dump -U greensun odoo_mirror | gzip > backups/$(date +\%F).sql.gz && \
   find backups -name '*.sql.gz' -mtime +30 -delete
 ```

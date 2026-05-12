@@ -1,22 +1,50 @@
-name: ${COMPOSE_PROJECT_NAME:-odoo-greensun}
-
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-greensun}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-greensun_dev}
-      POSTGRES_DB: ${POSTGRES_DB:-odoo_mirror}
-    ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-greensun} -d ${POSTGRES_DB:-odoo_mirror}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 15s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ODOO_URL: ${ODOO_URL}
+      ODOO_WEB_URL: ${ODOO_WEB_URL:-${ODOO_URL}}
+      ODOO_DB: ${ODOO_DB}
+      ODOO_USERNAME: ${ODOO_USERNAME}
+      ODOO_API_KEY: ${ODOO_API_KEY}
+      APP_PASSWORD: ${APP_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      INACTIVITY_DEFAULT_DAYS: ${INACTIVITY_DEFAULT_DAYS:-90}
+      SYNC_CRON: ${SYNC_CRON:-5 * * * *}
+      SYNC_CRON_ENABLED: ${SYNC_CRON_ENABLED:-true}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   pg_data:
