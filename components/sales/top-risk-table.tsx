@@ -103,7 +103,11 @@ export const TopRiskTable = ({ data }: { data: TopAtRiskCustomer[] }) => {
       csvHeaders={{
         name: "Cliente",
         email: "Email",
+        phone: "Telefono",
+        mobile: "Celular",
+        vat: "RNC/Cedula",
         country: "Pais",
+        city: "Ciudad",
         salespersonName: "Vendedor",
         recentRevenueUsd: "Reciente USD",
         recentRevenueDop: "Reciente DOP",

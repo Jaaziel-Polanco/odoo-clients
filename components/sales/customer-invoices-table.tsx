@@ -275,10 +275,12 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
           name: "Documento",
           invoiceDate: "Fecha",
           moveType: "Tipo",
+          amountUntaxed: "Subtotal",
           amountTotal: "Total",
           amountResidual: "Pendiente",
           currencyCode: "Moneda",
           paymentState: "Pago",
+          state: "Estado",
           salespersonName: "Vendedor",
           invoiceDateDue: "Vence",
         }}

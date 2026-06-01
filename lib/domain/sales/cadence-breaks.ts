@@ -5,7 +5,11 @@ export interface CadenceBreak {
   partnerId: number;
   name: string;
   email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  vat: string | null;
   country: string | null;
+  city: string | null;
   avgGapDays: number;
   currentGapDays: number;
   overdueRatio: number;
@@ -79,7 +83,11 @@ export const detectCadenceBreaks = async ({
     partner_id: number;
     name: string;
     email: string | null;
+    phone: string | null;
+    mobile: string | null;
+    vat: string | null;
     country: string | null;
+    city: string | null;
     avg_gap: string | null;
     current_gap: number;
     overdue_ratio: string;
@@ -112,7 +120,11 @@ export const detectCadenceBreaks = async ({
         p.id AS partner_id,
         p.name,
         p.email,
+        p.phone,
+        p.mobile,
+        p.vat,
         p.country,
+        p.city,
         MAX(i.invoice_date)::text AS last_invoice_date,
         (CURRENT_DATE - MAX(i.invoice_date))::int AS current_gap,
         COUNT(i.id)::int AS invoice_count,
@@ -134,14 +146,18 @@ export const detectCadenceBreaks = async ({
       ${countryClause}
       ${searchClause}
       ${salespersonClause}
-      GROUP BY p.id, p.name, p.email, p.country
+      GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city
       HAVING COUNT(i.id) >= ${minInvoices}::int
     )
     SELECT
       a.partner_id,
       a.name,
       a.email,
+      a.phone,
+      a.mobile,
+      a.vat,
       a.country,
+      a.city,
       g.avg_gap::text AS avg_gap,
       a.current_gap,
       (a.current_gap / NULLIF(g.avg_gap, 0))::text AS overdue_ratio,
@@ -163,7 +179,11 @@ export const detectCadenceBreaks = async ({
     partnerId: r.partner_id,
     name: r.name,
     email: r.email,
+    phone: r.phone,
+    mobile: r.mobile,
+    vat: r.vat,
     country: r.country,
+    city: r.city,
     avgGapDays: Number(r.avg_gap ?? 0),
     currentGapDays: r.current_gap,
     overdueRatio: Number(r.overdue_ratio ?? 0),

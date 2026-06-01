@@ -138,7 +138,11 @@ export const RfmTable = ({ data }: { data: RfmRow[] }) => {
         csvHeaders={{
           name: "Cliente",
           email: "Email",
+          phone: "Telefono",
+          mobile: "Celular",
+          vat: "RNC/Cedula",
           country: "Pais",
+          city: "Ciudad",
           segment: "Segmento",
           rScore: "R",
           fScore: "F",

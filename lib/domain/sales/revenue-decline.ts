@@ -5,7 +5,11 @@ export interface RevenueDeclineRow {
   partnerId: number;
   name: string;
   email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  vat: string | null;
   country: string | null;
+  city: string | null;
   recentRevenueUsd: number;
   recentRevenueDop: number;
   previousRevenueUsd: number;
@@ -69,7 +73,11 @@ export const detectRevenueDecline = async ({
     partner_id: number;
     name: string;
     email: string | null;
+    phone: string | null;
+    mobile: string | null;
+    vat: string | null;
     country: string | null;
+    city: string | null;
     recent_usd: string;
     recent_dop: string;
     previous_usd: string;
@@ -84,7 +92,11 @@ export const detectRevenueDecline = async ({
         p.id AS partner_id,
         p.name,
         p.email,
+        p.phone,
+        p.mobile,
+        p.vat,
         p.country,
+        p.city,
         SUM(CASE
           WHEN i.invoice_date >= CURRENT_DATE - (${periodMonths}::int * INTERVAL '1 month')
             AND i.currency_code='USD'
@@ -126,7 +138,7 @@ export const detectRevenueDecline = async ({
       ${countryClause}
       ${searchClause}
       ${salespersonClause}
-      GROUP BY p.id, p.name, p.email, p.country
+      GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city
     ),
     normalized AS (
       SELECT *,
@@ -138,7 +150,11 @@ export const detectRevenueDecline = async ({
       partner_id,
       name,
       email,
+      phone,
+      mobile,
+      vat,
       country,
+      city,
       recent_usd::text AS recent_usd,
       recent_dop::text AS recent_dop,
       previous_usd::text AS previous_usd,
@@ -158,7 +174,11 @@ export const detectRevenueDecline = async ({
     partnerId: r.partner_id,
     name: r.name,
     email: r.email,
+    phone: r.phone,
+    mobile: r.mobile,
+    vat: r.vat,
     country: r.country,
+    city: r.city,
     recentRevenueUsd: Number(r.recent_usd ?? 0),
     recentRevenueDop: Number(r.recent_dop ?? 0),
     previousRevenueUsd: Number(r.previous_usd ?? 0),

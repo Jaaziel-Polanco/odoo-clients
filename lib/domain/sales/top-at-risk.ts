@@ -7,7 +7,9 @@ export interface TopAtRiskCustomer {
   email: string | null;
   phone: string | null;
   mobile: string | null;
+  vat: string | null;
   country: string | null;
+  city: string | null;
   recentRevenueUsd: number;
   recentRevenueDop: number;
   lifetimeRevenueUsd: number;
@@ -91,7 +93,9 @@ export const findTopAtRisk = async ({
     email: string | null;
     phone: string | null;
     mobile: string | null;
+    vat: string | null;
     country: string | null;
+    city: string | null;
     recent_usd: string;
     recent_dop: string;
     lifetime_usd: string;
@@ -110,7 +114,9 @@ export const findTopAtRisk = async ({
         p.email,
         p.phone,
         p.mobile,
+        p.vat,
         p.country,
+        p.city,
         MAX(i.invoice_date) AS last_invoice_date,
         (CURRENT_DATE - MAX(i.invoice_date))::int AS days_since_last,
         COUNT(i.id)::int AS invoice_count,
@@ -144,7 +150,7 @@ export const findTopAtRisk = async ({
       ${countryClause}
       ${searchClause}
       ${salespersonClause}
-      GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.country
+      GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city
     )
     SELECT
       partner_id,
@@ -152,7 +158,9 @@ export const findTopAtRisk = async ({
       email,
       phone,
       mobile,
+      vat,
       country,
+      city,
       recent_usd::text AS recent_usd,
       recent_dop::text AS recent_dop,
       lifetime_usd::text AS lifetime_usd,
@@ -177,7 +185,9 @@ export const findTopAtRisk = async ({
     email: r.email,
     phone: r.phone,
     mobile: r.mobile,
+    vat: r.vat,
     country: r.country,
+    city: r.city,
     recentRevenueUsd: Number(r.recent_usd ?? 0),
     recentRevenueDop: Number(r.recent_dop ?? 0),
     lifetimeRevenueUsd: Number(r.lifetime_usd ?? 0),

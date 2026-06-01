@@ -7,6 +7,7 @@ export interface InactiveCustomer {
   email: string | null;
   phone: string | null;
   mobile: string | null;
+  vat: string | null;
   country: string | null;
   city: string | null;
   isCompany: boolean;
@@ -101,6 +102,7 @@ export const findInactiveCustomers = async ({
     email: string | null;
     phone: string | null;
     mobile: string | null;
+    vat: string | null;
     country: string | null;
     city: string | null;
     is_company: boolean;
@@ -118,6 +120,7 @@ export const findInactiveCustomers = async ({
       p.email,
       p.phone,
       p.mobile,
+      p.vat,
       p.country,
       p.city,
       p.is_company,
@@ -146,7 +149,7 @@ export const findInactiveCustomers = async ({
     ${buildSearchClause(search)}
     ${buildCountryClause(country)}
     ${buildSalespersonClause(salesperson)}
-    GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.country, p.city, p.is_company
+    GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city, p.is_company
     HAVING (${havingClause})${buildDateClause(dateFrom, dateTo)}
     ORDER BY ${buildSortClause(sort)}
     LIMIT ${limit} OFFSET ${offset}
@@ -158,6 +161,7 @@ export const findInactiveCustomers = async ({
     email: r.email,
     phone: r.phone,
     mobile: r.mobile,
+    vat: r.vat,
     country: r.country,
     city: r.city,
     isCompany: r.is_company,

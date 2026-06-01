@@ -18,7 +18,11 @@ export interface RfmRow {
   partnerId: number;
   name: string;
   email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  vat: string | null;
   country: string | null;
+  city: string | null;
   recencyDays: number;
   frequency: number;
   monetaryUsd: number;
@@ -69,7 +73,11 @@ export const computeRfm = async ({
     partner_id: number;
     name: string;
     email: string | null;
+    phone: string | null;
+    mobile: string | null;
+    vat: string | null;
     country: string | null;
+    city: string | null;
     recency_days: number;
     frequency: number;
     monetary_usd: string;
@@ -84,7 +92,11 @@ export const computeRfm = async ({
         p.id AS partner_id,
         p.name,
         p.email,
+        p.phone,
+        p.mobile,
+        p.vat,
         p.country,
+        p.city,
         (CURRENT_DATE - MAX(i.invoice_date))::int AS recency_days,
         COUNT(i.id)::int AS frequency,
         SUM(CASE WHEN i.currency_code='USD'
@@ -106,7 +118,7 @@ export const computeRfm = async ({
       ${countryClause}
       ${searchClause}
       ${salespersonClause}
-      GROUP BY p.id, p.name, p.email, p.country
+      GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city
       HAVING COUNT(i.id) > 0
     ),
     monetary_normalized AS (
@@ -126,7 +138,11 @@ export const computeRfm = async ({
       partner_id,
       name,
       email,
+      phone,
+      mobile,
+      vat,
       country,
+      city,
       recency_days,
       frequency,
       monetary_usd::text AS monetary_usd,
@@ -143,7 +159,11 @@ export const computeRfm = async ({
     partnerId: r.partner_id,
     name: r.name,
     email: r.email,
+    phone: r.phone,
+    mobile: r.mobile,
+    vat: r.vat,
     country: r.country,
+    city: r.city,
     recencyDays: r.recency_days,
     frequency: r.frequency,
     monetaryUsd: Number(r.monetary_usd ?? 0),

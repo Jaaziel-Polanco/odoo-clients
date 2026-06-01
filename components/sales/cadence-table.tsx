@@ -84,7 +84,11 @@ export const CadenceTable = ({ data }: { data: CadenceBreak[] }) => {
       csvHeaders={{
         name: "Cliente",
         email: "Email",
+        phone: "Telefono",
+        mobile: "Celular",
+        vat: "RNC/Cedula",
         country: "Pais",
+        city: "Ciudad",
         avgGapDays: "Cadencia normal (d)",
         currentGapDays: "Atraso actual (d)",
         overdueRatio: "Vs normal (x)",

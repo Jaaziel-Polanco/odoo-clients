@@ -75,9 +75,20 @@ export const toCsv = (rows: Record<string, unknown>[], headers: Record<string, s
   return `${headerRow}\n${body}`;
 };
 
+// Caracteres con los que Excel/Sheets interpretan una celda como formula.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
 const escapeCsv = (value: unknown): string => {
   if (value == null) return "";
-  const str = typeof value === "object" ? JSON.stringify(value) : String(value);
+  // Numeros y booleanos no pueden inyectar formulas y deben conservarse como
+  // valores nativos (ej. montos negativos en notas de credito siguen siendo
+  // numericos en Excel).
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  let str = typeof value === "object" ? JSON.stringify(value) : String(value);
+  // Anti formula-injection: prefija con comilla simple las celdas de texto que
+  // empiezan con = + - @ (telefonos internacionales, RNC, etc.) para que Excel
+  // las trate como texto y no lance error de formula.
+  if (FORMULA_TRIGGER.test(str)) str = `'${str}`;
   if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
   return str;
 };

@@ -111,6 +111,9 @@ export const InactiveTable = ({ data }: { data: InactiveCustomer[] }) => {
       csvHeaders={{
         name: "Cliente",
         email: "Email",
+        phone: "Telefono",
+        mobile: "Celular",
+        vat: "RNC/Cedula",
         country: "Pais",
         city: "Ciudad",
         salespersonName: "Vendedor",

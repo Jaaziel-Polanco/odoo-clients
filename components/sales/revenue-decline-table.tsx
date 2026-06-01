@@ -83,7 +83,11 @@ export const RevenueDeclineTable = ({ data }: { data: RevenueDeclineRow[] }) => 
       csvHeaders={{
         name: "Cliente",
         email: "Email",
+        phone: "Telefono",
+        mobile: "Celular",
+        vat: "RNC/Cedula",
         country: "Pais",
+        city: "Ciudad",
         previousRevenueUsd: "Anterior USD",
         previousRevenueDop: "Anterior DOP",
         recentRevenueUsd: "Reciente USD",

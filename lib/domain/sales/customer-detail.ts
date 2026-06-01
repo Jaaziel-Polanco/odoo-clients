@@ -8,6 +8,7 @@ export interface CustomerInvoice {
   invoiceDate: string | null;
   invoiceDateDue: string | null;
   amountTotal: number;
+  amountUntaxed: number;
   amountResidual: number;
   currencyCode: string | null;
   moveType: string;
@@ -83,6 +84,7 @@ export const getCustomerDetail = async (partnerId: number): Promise<CustomerDeta
     invoiceDate: i.invoiceDate,
     invoiceDateDue: i.invoiceDateDue,
     amountTotal: Number(i.amountTotal),
+    amountUntaxed: Number(i.amountUntaxed),
     amountResidual: Number(i.amountResidual),
     currencyCode: i.currencyCode,
     moveType: i.moveType,
