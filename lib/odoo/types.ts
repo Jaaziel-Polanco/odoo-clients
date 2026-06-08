@@ -60,6 +60,7 @@ export interface SearchReadOptions {
   limit?: number;
   offset?: number;
   order?: string;
+  context?: Record<string, unknown>;
 }
 
 export interface OdooInvoiceLineRaw {

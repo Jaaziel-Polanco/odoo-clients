@@ -87,6 +87,7 @@ export const searchRead = async <T>(
   if (options.limit !== undefined) kwargs.limit = options.limit;
   if (options.offset !== undefined) kwargs.offset = options.offset;
   if (options.order) kwargs.order = options.order;
+  if (options.context) kwargs.context = options.context;
   return executeKw<T[]>(model, "search_read", [domain], kwargs);
 };
 

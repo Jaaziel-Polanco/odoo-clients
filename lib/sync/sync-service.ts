@@ -181,7 +181,7 @@ const recordSyncRun = async (
 const syncPartnersIncremental = async (): Promise<SyncRunResult> => {
   const start = Date.now();
   const lastWriteDate = await getLastWriteDate("partners");
-  const baseDomain: OdooDomain = [["customer_rank", ">", 0]];
+  const baseDomain: OdooDomain = [];
   const domain: OdooDomain = lastWriteDate
     ? [...baseDomain, ["write_date", ">", formatOdooDate(lastWriteDate)]]
     : baseDomain;
@@ -234,7 +234,9 @@ const ensurePartnersExist = async (partnerIds: number[]): Promise<void> => {
   const existingSet = new Set(existing.map((r) => r.id));
   const missing = partnerIds.filter((id) => !existingSet.has(id));
   if (missing.length === 0) return;
-  const fetched = await fetchPartners([["id", "in", missing]]);
+  const fetched = await fetchPartners([["id", "in", missing]], {
+    context: { active_test: false },
+  });
   await upsertPartners(fetched.map(mapPartner));
 };
 
