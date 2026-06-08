@@ -5,6 +5,7 @@ import type {
   OdooInvoiceLineRaw,
   OdooInvoiceRaw,
   OdooPartnerRaw,
+  OdooSaleOrderRaw,
   SearchReadOptions,
 } from "./types";
 
@@ -94,6 +95,14 @@ export const searchRead = async <T>(
 export const searchCount = (model: string, domain: OdooDomain): Promise<number> =>
   executeKw<number>(model, "search_count", [domain]);
 
+/**
+ * Cancela una entrega/picking en Odoo (libera el inventario reservado).
+ * Llama al metodo estandar action_cancel del boton "Cancelar". ESCRIBE en prod.
+ */
+export const cancelPicking = async (id: number): Promise<void> => {
+  await executeKw<unknown>("stock.picking", "action_cancel", [[id]]);
+};
+
 const PARTNER_FIELDS = [
   "id",
   "name",
@@ -150,6 +159,61 @@ export const fetchInvoices = (
     order: "write_date asc, id asc",
     ...options,
   });
+
+// Campos garantizados en el core de sale.order.
+const SALE_ORDER_BASE_FIELDS = [
+  "id",
+  "name",
+  "partner_id",
+  "user_id",
+  "date_order",
+  "state",
+  "invoice_status",
+  "amount_total",
+  "amount_untaxed",
+  "currency_id",
+  "company_id",
+  "write_date",
+];
+
+// delivery_status lo aporta el modulo sale_stock (Odoo 16+). Puede no existir
+// si Inventario no esta instalado, asi que lo resolvemos dinamicamente.
+const OPTIONAL_SALE_ORDER_FIELDS = ["delivery_status"];
+
+let saleOrderFieldsCache: string[] | null = null;
+
+const resolveSaleOrderFields = async (): Promise<string[]> => {
+  if (saleOrderFieldsCache) return saleOrderFieldsCache;
+  let available: Set<string>;
+  try {
+    const defs = await executeKw<Record<string, unknown>>(
+      "sale.order",
+      "fields_get",
+      [[]],
+      { attributes: ["type"] },
+    );
+    available = new Set(Object.keys(defs));
+  } catch {
+    available = new Set(SALE_ORDER_BASE_FIELDS);
+  }
+  saleOrderFieldsCache = [
+    ...SALE_ORDER_BASE_FIELDS,
+    ...OPTIONAL_SALE_ORDER_FIELDS.filter((f) => available.has(f)),
+  ];
+  return saleOrderFieldsCache;
+};
+
+export const fetchSaleOrders = async (
+  domain: OdooDomain = [],
+  options: Omit<SearchReadOptions, "fields"> = {},
+): Promise<OdooSaleOrderRaw[]> => {
+  const fields = await resolveSaleOrderFields();
+  return searchRead<OdooSaleOrderRaw>("sale.order", domain, {
+    fields,
+    order: "write_date asc, id asc",
+    ...options,
+  });
+};
 
 const INVOICE_LINE_FIELDS = [
   "id",

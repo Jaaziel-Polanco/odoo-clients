@@ -55,6 +55,22 @@ export interface OdooInvoiceRaw {
   write_date: string;
 }
 
+export interface OdooSaleOrderRaw {
+  id: number;
+  name: string;
+  partner_id: [number, string] | false;
+  user_id?: [number, string] | false;
+  date_order?: string | false;
+  state: string;
+  invoice_status?: string | false;
+  delivery_status?: string | false;
+  amount_total: number;
+  amount_untaxed: number;
+  currency_id?: [number, string] | false;
+  company_id?: [number, string] | false;
+  write_date: string;
+}
+
 export interface SearchReadOptions {
   fields?: string[];
   limit?: number;

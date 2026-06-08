@@ -70,6 +70,36 @@ export const invoices = pgTable(
   ],
 );
 
+export const saleOrders = pgTable(
+  "sale_orders",
+  {
+    id: integer("id").primaryKey(),
+    name: text("name").notNull(),
+    partnerId: integer("partner_id")
+      .notNull()
+      .references(() => partners.id, { onDelete: "cascade" }),
+    state: text("state").notNull(),
+    invoiceStatus: text("invoice_status"),
+    deliveryStatus: text("delivery_status"),
+    dateOrder: timestamp("date_order", { withTimezone: true }),
+    amountTotal: numeric("amount_total", { precision: 18, scale: 4 }).notNull().default("0"),
+    amountUntaxed: numeric("amount_untaxed", { precision: 18, scale: 4 }).notNull().default("0"),
+    currencyCode: text("currency_code"),
+    companyId: integer("company_id"),
+    salespersonId: integer("salesperson_id"),
+    salespersonName: text("salesperson_name"),
+    writeDate: timestamp("write_date", { withTimezone: true }).notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("sale_orders_partner_idx").on(table.partnerId),
+    index("sale_orders_date_idx").on(table.dateOrder),
+    index("sale_orders_write_date_idx").on(table.writeDate),
+    index("sale_orders_state_idx").on(table.state),
+    index("sale_orders_salesperson_idx").on(table.salespersonName),
+  ],
+);
+
 export const syncState = pgTable("sync_state", {
   resource: text("resource").primaryKey(),
   lastWriteDate: timestamp("last_write_date", { withTimezone: true }),
@@ -90,5 +120,7 @@ export type Partner = typeof partners.$inferSelect;
 export type NewPartner = typeof partners.$inferInsert;
 export type Invoice = typeof invoices.$inferSelect;
 export type NewInvoice = typeof invoices.$inferInsert;
+export type SaleOrder = typeof saleOrders.$inferSelect;
+export type NewSaleOrder = typeof saleOrders.$inferInsert;
 export type SyncState = typeof syncState.$inferSelect;
 export type AppConfigRow = typeof appConfig.$inferSelect;

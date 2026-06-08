@@ -1,9 +1,14 @@
 import { sql, inArray, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { invoices, partners, syncState } from "@/lib/db/schema";
-import type { NewInvoice, NewPartner } from "@/lib/db/schema";
-import { fetchInvoices, fetchPartners } from "@/lib/odoo/client";
-import type { OdooInvoiceRaw, OdooPartnerRaw, OdooDomain } from "@/lib/odoo/types";
+import { invoices, partners, saleOrders, syncState } from "@/lib/db/schema";
+import type { NewInvoice, NewPartner, NewSaleOrder } from "@/lib/db/schema";
+import { fetchInvoices, fetchPartners, fetchSaleOrders } from "@/lib/odoo/client";
+import type {
+  OdooInvoiceRaw,
+  OdooPartnerRaw,
+  OdooSaleOrderRaw,
+  OdooDomain,
+} from "@/lib/odoo/types";
 import {
   odooStr,
   parseMany2one,
@@ -13,7 +18,7 @@ import {
 
 const BATCH_SIZE = 200;
 
-export type SyncResource = "partners" | "invoices";
+export type SyncResource = "partners" | "invoices" | "sale_orders";
 
 export interface SyncRunResult {
   resource: SyncResource;
@@ -82,6 +87,31 @@ const mapInvoice = (raw: OdooInvoiceRaw): NewInvoice | null => {
   };
 };
 
+const mapSaleOrder = (raw: OdooSaleOrderRaw): NewSaleOrder | null => {
+  const partner = parseMany2one(raw.partner_id);
+  if (!partner) return null;
+  const writeDate = parseOdooDateTime(raw.write_date);
+  if (!writeDate) return null;
+  const currency = parseMany2one<string>(raw.currency_id ?? false);
+  const salesperson = parseMany2one<string>(raw.user_id ?? false);
+  return {
+    id: raw.id,
+    name: raw.name,
+    partnerId: partner.id,
+    state: raw.state,
+    invoiceStatus: odooStr(raw.invoice_status),
+    deliveryStatus: odooStr(raw.delivery_status),
+    dateOrder: parseOdooDateTime(raw.date_order),
+    amountTotal: String(raw.amount_total ?? 0),
+    amountUntaxed: String(raw.amount_untaxed ?? 0),
+    currencyCode: currency?.name ?? null,
+    companyId: parseMany2one(raw.company_id ?? false)?.id ?? null,
+    salespersonId: salesperson?.id ?? null,
+    salespersonName: salesperson?.name ?? null,
+    writeDate,
+  };
+};
+
 const getLastWriteDate = async (resource: SyncResource): Promise<Date | null> => {
   const rows = await db
     .select()
@@ -140,6 +170,32 @@ const upsertInvoices = async (rows: NewInvoice[]): Promise<void> => {
         amountTotal: sql`excluded.amount_total`,
         amountUntaxed: sql`excluded.amount_untaxed`,
         amountResidual: sql`excluded.amount_residual`,
+        currencyCode: sql`excluded.currency_code`,
+        companyId: sql`excluded.company_id`,
+        salespersonId: sql`excluded.salesperson_id`,
+        salespersonName: sql`excluded.salesperson_name`,
+        writeDate: sql`excluded.write_date`,
+        syncedAt: sql`now()`,
+      },
+    });
+};
+
+const upsertSaleOrders = async (rows: NewSaleOrder[]): Promise<void> => {
+  if (rows.length === 0) return;
+  await db
+    .insert(saleOrders)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: saleOrders.id,
+      set: {
+        name: sql`excluded.name`,
+        partnerId: sql`excluded.partner_id`,
+        state: sql`excluded.state`,
+        invoiceStatus: sql`excluded.invoice_status`,
+        deliveryStatus: sql`excluded.delivery_status`,
+        dateOrder: sql`excluded.date_order`,
+        amountTotal: sql`excluded.amount_total`,
+        amountUntaxed: sql`excluded.amount_untaxed`,
         currencyCode: sql`excluded.currency_code`,
         companyId: sql`excluded.company_id`,
         salespersonId: sql`excluded.salesperson_id`,
@@ -293,13 +349,71 @@ const syncInvoicesIncremental = async (): Promise<SyncRunResult> => {
   }
 };
 
+const syncSaleOrdersIncremental = async (): Promise<SyncRunResult> => {
+  const start = Date.now();
+  const lastWriteDate = await getLastWriteDate("sale_orders");
+  // Solo ordenes confirmadas (ventas reales), no cotizaciones ni canceladas.
+  const baseDomain: OdooDomain = [["state", "in", ["sale", "done"]]];
+  const domain: OdooDomain = lastWriteDate
+    ? [...baseDomain, ["write_date", ">", formatOdooDate(lastWriteDate)]]
+    : baseDomain;
+
+  let offset = 0;
+  let total = 0;
+  let maxWriteDate: Date | null = lastWriteDate;
+  try {
+    while (true) {
+      const batch = await fetchSaleOrders(domain, { limit: BATCH_SIZE, offset });
+      if (batch.length === 0) break;
+      const mapped = batch
+        .map(mapSaleOrder)
+        .filter((v): v is NewSaleOrder => v !== null);
+      const partnerIds = Array.from(new Set(mapped.map((m) => m.partnerId)));
+      await ensurePartnersExist(partnerIds);
+      await upsertSaleOrders(mapped);
+      for (const so of mapped) {
+        if (!maxWriteDate || so.writeDate > maxWriteDate) maxWriteDate = so.writeDate;
+      }
+      total += mapped.length;
+      if (batch.length < BATCH_SIZE) break;
+      offset += BATCH_SIZE;
+    }
+    const result: SyncRunResult = {
+      resource: "sale_orders",
+      status: "ok",
+      recordsProcessed: total,
+      durationMs: Date.now() - start,
+      lastWriteDate: maxWriteDate,
+    };
+    await recordSyncRun("sale_orders", result);
+    return result;
+  } catch (err) {
+    const result: SyncRunResult = {
+      resource: "sale_orders",
+      status: "error",
+      recordsProcessed: total,
+      durationMs: Date.now() - start,
+      lastWriteDate,
+      error: err instanceof Error ? err.message : String(err),
+    };
+    await recordSyncRun("sale_orders", result);
+    return result;
+  }
+};
+
 export const runFullSync = async (): Promise<{
   partners: SyncRunResult;
   invoices: SyncRunResult;
+  saleOrders: SyncRunResult;
 }> => {
   const partnersResult = await syncPartnersIncremental();
   const invoicesResult = await syncInvoicesIncremental();
-  return { partners: partnersResult, invoices: invoicesResult };
+  const saleOrdersResult = await syncSaleOrdersIncremental();
+  return {
+    partners: partnersResult,
+    invoices: invoicesResult,
+    saleOrders: saleOrdersResult,
+  };
 };
 
 export const getSyncStatus = async () => {

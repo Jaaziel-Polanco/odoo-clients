@@ -34,3 +34,20 @@ export const getSalespersons = async (): Promise<FilterOption[]> => {
     count: r.count,
   }));
 };
+
+// Vendedores tomados del modulo de ventas (sale.order), no de facturas.
+export const getSaleSalespersons = async (): Promise<FilterOption[]> => {
+  const rows = await db.execute<{ salesperson_name: string; count: number }>(sql`
+    SELECT so.salesperson_name, COUNT(*)::int AS count
+    FROM sale_orders so
+    WHERE so.salesperson_name IS NOT NULL
+      AND so.state IN ('sale', 'done')
+    GROUP BY so.salesperson_name
+    ORDER BY count DESC
+  `);
+  return rows.map((r) => ({
+    value: r.salesperson_name,
+    label: r.salesperson_name,
+    count: r.count,
+  }));
+};

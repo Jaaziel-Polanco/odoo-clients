@@ -9,14 +9,19 @@ export async function POST() {
   try {
     const result = await runFullSync();
     const hasError =
-      result.partners.status === "error" || result.invoices.status === "error";
+      result.partners.status === "error" ||
+      result.invoices.status === "error" ||
+      result.saleOrders.status === "error";
     return NextResponse.json(
       {
         ok: !hasError,
         partners: result.partners,
         invoices: result.invoices,
+        saleOrders: result.saleOrders,
         error: hasError
-          ? (result.partners.error ?? result.invoices.error)
+          ? (result.partners.error ??
+            result.invoices.error ??
+            result.saleOrders.error)
           : undefined,
       },
       { status: hasError ? 502 : 200 },

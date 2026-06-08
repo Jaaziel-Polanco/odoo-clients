@@ -26,6 +26,7 @@ export const startSyncScheduler = () => {
       console.info("[sync] cron ok", {
         partners: result.partners.recordsProcessed,
         invoices: result.invoices.recordsProcessed,
+        saleOrders: result.saleOrders.recordsProcessed,
       });
     } catch (err) {
       console.error("[sync] cron error", err);
