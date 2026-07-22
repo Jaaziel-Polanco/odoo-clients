@@ -54,6 +54,18 @@ const buildSalespersonClause = (salesperson: string | undefined) =>
     ? sql`AND EXISTS (SELECT 1 FROM invoices ii WHERE ii.partner_id = p.id AND ii.salesperson_name = ${salesperson})`
     : sql``;
 
+// Excluye clientes con una interaccion reciente en el modulo de ventas: una
+// cotizacion u orden (cualquier estado salvo cancelada) dentro del umbral. El
+// cliente ya se reactivo aunque aun no se haya facturado, asi que no debe
+// aparecer como inactivo.
+const buildRecentOrderClause = (thresholdDays: number): SQL =>
+  sql`AND NOT EXISTS (
+    SELECT 1 FROM sale_orders so
+    WHERE so.partner_id = p.id
+      AND so.state <> 'cancel'
+      AND so.date_order >= CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')
+  )`;
+
 const buildDateClause = (dateFrom?: string, dateTo?: string): SQL => {
   if (!dateFrom && !dateTo) return sql``;
   const parts: SQL[] = [];
@@ -149,6 +161,7 @@ export const findInactiveCustomers = async ({
     ${buildSearchClause(search)}
     ${buildCountryClause(country)}
     ${buildSalespersonClause(salesperson)}
+    ${buildRecentOrderClause(thresholdDays)}
     GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city, p.is_company
     HAVING (${havingClause})${buildDateClause(dateFrom, dateTo)}
     ORDER BY ${buildSortClause(sort)}
@@ -211,6 +224,7 @@ export const countInactiveCustomers = async (
       ${buildSearchClause(search)}
       ${buildCountryClause(country)}
       ${buildSalespersonClause(salesperson)}
+      ${buildRecentOrderClause(thresholdDays)}
       GROUP BY p.id
       HAVING (${havingClause})${buildDateClause(dateFrom, dateTo)}
     ) sub

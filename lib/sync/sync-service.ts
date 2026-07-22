@@ -352,8 +352,10 @@ const syncInvoicesIncremental = async (): Promise<SyncRunResult> => {
 const syncSaleOrdersIncremental = async (): Promise<SyncRunResult> => {
   const start = Date.now();
   const lastWriteDate = await getLastWriteDate("sale_orders");
-  // Solo ordenes confirmadas (ventas reales), no cotizaciones ni canceladas.
-  const baseDomain: OdooDomain = [["state", "in", ["sale", "done"]]];
+  // Todo lo que no este cancelado: incluye cotizaciones (draft/sent), no solo
+  // ordenes confirmadas. Una cotizacion reciente cuenta como interaccion, asi
+  // el cliente no aparece como inactivo si otro vendedor ya lo trabajo.
+  const baseDomain: OdooDomain = [["state", "!=", "cancel"]];
   const domain: OdooDomain = lastWriteDate
     ? [...baseDomain, ["write_date", ">", formatOdooDate(lastWriteDate)]]
     : baseDomain;

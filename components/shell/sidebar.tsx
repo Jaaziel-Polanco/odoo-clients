@@ -12,6 +12,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard/cadencia" as Route, label: "Cadencia", icon: "⟳", hint: "Atraso vs patron historico" },
   { href: "/dashboard/rfm" as Route, label: "Segmentos RFM", icon: "◧", hint: "Recencia/Frecuencia/Monto" },
   { href: "/dashboard/revenue" as Route, label: "Revenue decline", icon: "↘", hint: "Caida vs periodo anterior" },
+  { href: "/dashboard/cobranzas" as Route, label: "Cuentas por cobrar", icon: "$", hint: "Facturas a credito por vencer/vencidas" },
   { href: "/dashboard/reactivados" as Route, label: "Reactivados", icon: "↺", hint: "Volvieron tras dejar de comprar" },
   { href: "/dashboard/auditoria" as Route, label: "Auditoría", icon: "⚠", hint: "Despachado sin facturar" },
   { href: "/dashboard/entregas-pendientes" as Route, label: "Entregas pendientes", icon: "⧖", hint: "Sin despachar, bloquean stock" },

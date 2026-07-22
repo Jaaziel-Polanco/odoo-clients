@@ -150,6 +150,12 @@ export const findTopAtRisk = async ({
       ${countryClause}
       ${searchClause}
       ${salespersonClause}
+      AND NOT EXISTS (
+        SELECT 1 FROM sale_orders so
+        WHERE so.partner_id = p.id
+          AND so.state <> 'cancel'
+          AND so.date_order >= CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')
+      )
       GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city
     )
     SELECT
