@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession, verifyAppPassword } from "@/lib/auth/session";
+import { getSession, resolveRole } from "@/lib/auth/session";
 
 const bodySchema = z.object({
   password: z.string().min(1),
@@ -17,14 +17,21 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: "Password requerido" }, { status: 400 });
   }
-  if (!verifyAppPassword(parsed.data.password)) {
+  const role = resolveRole(parsed.data.password);
+  if (!role) {
     return NextResponse.json({ ok: false, error: "Password incorrecto" }, { status: 401 });
   }
   const session = await getSession();
   session.authenticated = true;
+  session.role = role;
   session.loggedInAt = Date.now();
   await session.save();
-  return NextResponse.json({ ok: true });
+  // El empleado no puede entrar al dashboard general: lo mandamos a su vista.
+  return NextResponse.json({
+    ok: true,
+    role,
+    redirectTo: role === "employee" ? "/dashboard/inactivos" : null,
+  });
 }
 
 export async function DELETE() {

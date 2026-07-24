@@ -3,10 +3,12 @@ import { SettingsForm } from "@/components/config/settings-form";
 import { getAppSettings } from "@/lib/domain/config/app-settings";
 import { getSyncStatus } from "@/lib/sync/sync-service";
 import { Badge } from "@/components/ui/badge";
+import { requireAdmin } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage() {
+  await requireAdmin();
   const [settings, syncRows] = await Promise.all([getAppSettings(), getSyncStatus()]);
 
   return (

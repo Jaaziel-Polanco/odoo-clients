@@ -58,6 +58,18 @@ export const SettingsForm = ({ initial }: SettingsFormProps) => {
       </Field>
 
       <Field
+        label="Ventana de cotizacion reciente (dias)"
+        help="Si el cliente cotizo dentro de estos dias no aparece como inactivo: ya lo estan manejando."
+      >
+        <Input
+          type="number"
+          min={1}
+          value={values.quotationRecencyDays}
+          onChange={(e) => update("quotationRecencyDays", Number(e.target.value))}
+        />
+      </Field>
+
+      <Field
         label="Multiplicador de cadencia"
         help="Atraso = X * cadencia normal. 1.5 = 50% mas tarde de lo habitual."
       >

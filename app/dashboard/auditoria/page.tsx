@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardValue, CardFooter } from "@/components/ui/card";
 import { AuditCancelledTable } from "@/components/sales/audit-cancelled-table";
 import { fmtMoney, fmtNumber } from "@/lib/format";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   findCancelledDeliveries,
   type CancelledDeliveriesResult,
@@ -9,6 +10,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function AuditoriaPage() {
+  await requireAdmin();
   let result: CancelledDeliveriesResult | null = null;
   let error: string | null = null;
   try {

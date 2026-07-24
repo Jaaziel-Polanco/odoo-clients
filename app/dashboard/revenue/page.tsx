@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueDeclineTable } from "@/components/sales/revenue-decline-table";
 import { FilterBar } from "@/components/sales/filters/filter-bar";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   detectRevenueDecline,
   type RevenueDeclineSort,
@@ -30,6 +31,7 @@ const SORT_OPTIONS: { value: RevenueDeclineSort; label: string }[] = [
 export const dynamic = "force-dynamic";
 
 export default async function RevenueDeclinePage({ searchParams }: PageProps) {
+  await requireAdmin();
   const params = await searchParams;
   const settings = await getAppSettings();
   const sort = (params.sort as RevenueDeclineSort | undefined) ?? "drop_amount_desc";

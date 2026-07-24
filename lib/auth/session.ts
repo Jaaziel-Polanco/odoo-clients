@@ -2,8 +2,15 @@ import { getIronSession, type SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
 import { env } from "@/lib/config/env";
 
+/**
+ * admin: acceso total (el usuario historico del sistema).
+ * employee: solo seguimiento de clientes inactivos, sin data economica.
+ */
+export type UserRole = "admin" | "employee";
+
 export interface SessionData {
   authenticated?: boolean;
+  role?: UserRole;
   loggedInAt?: number;
 }
 
@@ -38,5 +45,20 @@ const constantTimeEqual = (a: string, b: string) => {
   return mismatch === 0;
 };
 
+/**
+ * Resuelve el rol a partir del password. Evalua ambas comparaciones siempre
+ * para no filtrar cual coincidio por tiempo de respuesta. Admin gana si ambos
+ * passwords estuvieran configurados iguales.
+ */
+export const resolveRole = (candidate: string): UserRole | null => {
+  const isAdmin = constantTimeEqual(candidate, env.APP_PASSWORD);
+  const isEmployee =
+    env.EMPLOYEE_PASSWORD !== undefined &&
+    constantTimeEqual(candidate, env.EMPLOYEE_PASSWORD);
+  if (isAdmin) return "admin";
+  if (isEmployee) return "employee";
+  return null;
+};
+
 export const verifyAppPassword = (candidate: string) =>
-  constantTimeEqual(candidate, env.APP_PASSWORD);
+  resolveRole(candidate) !== null;

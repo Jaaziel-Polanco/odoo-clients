@@ -19,14 +19,26 @@ export const NAV_ITEMS = [
   { href: "/dashboard/config" as Route, label: "Configuracion", icon: "⚙", hint: "Umbrales y sync" },
 ];
 
+/** Menu del rol employee. Debe coincidir con EMPLOYEE_ALLOWED_PATHS en proxy.ts. */
+const EMPLOYEE_HREFS: string[] = ["/dashboard/inactivos", "/dashboard/cadencia"];
+
 interface SidebarProps {
   variant?: "desktop" | "mobile";
   onNavigate?: () => void;
+  role?: "admin" | "employee";
 }
 
-export const Sidebar = ({ variant = "desktop", onNavigate }: SidebarProps) => {
+export const Sidebar = ({
+  variant = "desktop",
+  onNavigate,
+  role = "admin",
+}: SidebarProps) => {
   const pathname = usePathname();
   const isMobile = variant === "mobile";
+  const items =
+    role === "employee"
+      ? NAV_ITEMS.filter((i) => EMPLOYEE_HREFS.includes(i.href))
+      : NAV_ITEMS;
   return (
     <aside
       className={cn(
@@ -43,7 +55,7 @@ export const Sidebar = ({ variant = "desktop", onNavigate }: SidebarProps) => {
         </p>
       </div>
       <nav className="space-y-1">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));

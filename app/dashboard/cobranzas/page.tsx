@@ -4,6 +4,7 @@ import { CreditDueFilters } from "@/components/sales/credit-due-filters";
 import { FilterBar } from "@/components/sales/filters/filter-bar";
 import { fmtMoney, fmtNumber } from "@/lib/format";
 import { getSalespersons } from "@/lib/domain/sales/filter-options";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   findCreditInvoices,
   getCreditSummary,
@@ -29,6 +30,7 @@ const SORT_OPTIONS: { value: CreditSort; label: string }[] = [
 export const dynamic = "force-dynamic";
 
 export default async function CobranzasPage({ searchParams }: PageProps) {
+  await requireAdmin();
   const params = await searchParams;
   const due = (params.due as DueFilter | undefined) ?? "all";
   const sort = (params.sort as CreditSort | undefined) ?? "due_asc";

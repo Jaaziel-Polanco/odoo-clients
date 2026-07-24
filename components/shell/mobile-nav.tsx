@@ -5,7 +5,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "./sidebar";
 
-export const MobileNav = () => {
+export const MobileNav = ({ role = "admin" }: { role?: "admin" | "employee" }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -20,7 +20,7 @@ export const MobileNav = () => {
         ☰
       </Button>
       <Sheet open={open} onClose={() => setOpen(false)} side="left">
-        <Sidebar variant="mobile" onNavigate={() => setOpen(false)} />
+        <Sidebar variant="mobile" role={role} onNavigate={() => setOpen(false)} />
       </Sheet>
     </>
   );

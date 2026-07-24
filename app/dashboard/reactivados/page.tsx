@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReactivatedTable } from "@/components/sales/reactivated-table";
 import { FilterBar } from "@/components/sales/filters/filter-bar";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   findReactivatedCustomers,
   type ReactivatedSort,
@@ -30,6 +31,7 @@ const DEFAULT_GAP_DAYS = 90;
 export const dynamic = "force-dynamic";
 
 export default async function ReactivadosPage({ searchParams }: PageProps) {
+  await requireAdmin();
   const params = await searchParams;
   const gapDays = Number(params.days) || DEFAULT_GAP_DAYS;
   const sort = (params.sort as ReactivatedSort | undefined) ?? "order_date_desc";

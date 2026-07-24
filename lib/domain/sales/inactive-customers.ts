@@ -30,6 +30,11 @@ export type InactiveSort =
 
 export interface FindInactiveOptions {
   thresholdDays: number;
+  /**
+   * Ventana propia para la exclusion por cotizacion reciente. Si se omite se
+   * usa thresholdDays (comportamiento historico).
+   */
+  quotationRecencyDays?: number;
   includeNeverPurchased?: boolean;
   limit?: number;
   offset?: number;
@@ -55,15 +60,15 @@ const buildSalespersonClause = (salesperson: string | undefined) =>
     : sql``;
 
 // Excluye clientes con una interaccion reciente en el modulo de ventas: una
-// cotizacion u orden (cualquier estado salvo cancelada) dentro del umbral. El
-// cliente ya se reactivo aunque aun no se haya facturado, asi que no debe
-// aparecer como inactivo.
-const buildRecentOrderClause = (thresholdDays: number): SQL =>
+// cotizacion u orden (cualquier estado salvo cancelada) dentro de la ventana
+// configurada. El cliente ya se esta trabajando aunque aun no se haya
+// facturado, asi que no debe aparecer como inactivo.
+const buildRecentOrderClause = (recencyDays: number): SQL =>
   sql`AND NOT EXISTS (
     SELECT 1 FROM sale_orders so
     WHERE so.partner_id = p.id
       AND so.state <> 'cancel'
-      AND so.date_order >= CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')
+      AND so.date_order >= CURRENT_DATE - (${recencyDays}::int * INTERVAL '1 day')
   )`;
 
 const buildDateClause = (dateFrom?: string, dateTo?: string): SQL => {
@@ -94,6 +99,7 @@ const buildSortClause = (sort: InactiveSort | undefined): SQL => {
 
 export const findInactiveCustomers = async ({
   thresholdDays,
+  quotationRecencyDays,
   includeNeverPurchased = false,
   limit = 1000,
   offset = 0,
@@ -104,6 +110,7 @@ export const findInactiveCustomers = async ({
   dateTo,
   sort,
 }: FindInactiveOptions): Promise<InactiveCustomer[]> => {
+  const recencyDays = quotationRecencyDays ?? thresholdDays;
   const havingClause = includeNeverPurchased
     ? sql`MAX(i.invoice_date) IS NULL OR MAX(i.invoice_date) < CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')`
     : sql`MAX(i.invoice_date) IS NOT NULL AND MAX(i.invoice_date) < CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')`;
@@ -161,7 +168,7 @@ export const findInactiveCustomers = async ({
     ${buildSearchClause(search)}
     ${buildCountryClause(country)}
     ${buildSalespersonClause(salesperson)}
-    ${buildRecentOrderClause(thresholdDays)}
+    ${buildRecentOrderClause(recencyDays)}
     GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city, p.is_company
     HAVING (${havingClause})${buildDateClause(dateFrom, dateTo)}
     ORDER BY ${buildSortClause(sort)}
@@ -192,6 +199,7 @@ export const countInactiveCustomers = async (
   options: Pick<
     FindInactiveOptions,
     | "thresholdDays"
+    | "quotationRecencyDays"
     | "includeNeverPurchased"
     | "search"
     | "country"
@@ -202,6 +210,7 @@ export const countInactiveCustomers = async (
 ): Promise<number> => {
   const {
     thresholdDays,
+    quotationRecencyDays,
     includeNeverPurchased = false,
     search,
     country,
@@ -209,6 +218,7 @@ export const countInactiveCustomers = async (
     dateFrom,
     dateTo,
   } = options;
+  const recencyDays = quotationRecencyDays ?? thresholdDays;
   const havingClause = includeNeverPurchased
     ? sql`MAX(i.invoice_date) IS NULL OR MAX(i.invoice_date) < CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')`
     : sql`MAX(i.invoice_date) IS NOT NULL AND MAX(i.invoice_date) < CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')`;
@@ -224,7 +234,7 @@ export const countInactiveCustomers = async (
       ${buildSearchClause(search)}
       ${buildCountryClause(country)}
       ${buildSalespersonClause(salesperson)}
-      ${buildRecentOrderClause(thresholdDays)}
+      ${buildRecentOrderClause(recencyDays)}
       GROUP BY p.id
       HAVING (${havingClause})${buildDateClause(dateFrom, dateTo)}
     ) sub

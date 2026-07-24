@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/guard";
+import { requireAuth, isAdmin } from "@/lib/auth/guard";
 import { runFullSync } from "@/lib/sync/sync-service";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
   await requireAuth();
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { ok: false, error: "Sin permisos para esta operacion" },
+      { status: 403 },
+    );
+  }
   try {
     const result = await runFullSync();
     const hasError =

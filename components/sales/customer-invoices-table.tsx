@@ -50,7 +50,19 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "name_desc", label: "Documento Z → A" },
 ];
 
-export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => {
+interface CustomerInvoicesTableProps {
+  data: CustomerInvoice[];
+  /**
+   * El rol employee ve que facturas existen (documento, fecha, estado de pago)
+   * pero no sus montos, ni puede abrir el detalle de factura.
+   */
+  canSeeMoney?: boolean;
+}
+
+export const CustomerInvoicesTable = ({
+  data,
+  canSeeMoney = true,
+}: CustomerInvoicesTableProps) => {
   const router = useRouter();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -66,7 +78,13 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
     if (paymentState)
       rows = rows.filter((r) => (r.paymentState ?? "") === paymentState);
     if (moveType) rows = rows.filter((r) => r.moveType === moveType);
-    if (pendingOnly) rows = rows.filter((r) => r.amountResidual > 0);
+    // Sin acceso a montos el saldo llega en 0: se usa el estado de pago.
+    if (pendingOnly)
+      rows = canSeeMoney
+        ? rows.filter((r) => r.amountResidual > 0)
+        : rows.filter(
+            (r) => r.paymentState === "not_paid" || r.paymentState === "partial",
+          );
     switch (sort) {
       case "date_asc":
         rows.sort((a, b) => (a.invoiceDate ?? "").localeCompare(b.invoiceDate ?? ""));
@@ -85,7 +103,7 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
         rows.sort((a, b) => (b.invoiceDate ?? "").localeCompare(a.invoiceDate ?? ""));
     }
     return rows;
-  }, [data, dateFrom, dateTo, paymentState, moveType, pendingOnly, sort]);
+  }, [data, dateFrom, dateTo, paymentState, moveType, pendingOnly, sort, canSeeMoney]);
 
   const paymentStates = useMemo(() => {
     const set = new Set<string>();
@@ -136,28 +154,32 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
           </Badge>
         ),
       },
-      {
-        accessorKey: "amountTotal",
-        header: "Total",
-        cell: ({ row }) =>
-          fmtMoney(
-            row.original.moveType === "out_refund"
-              ? -row.original.amountTotal
-              : row.original.amountTotal,
-            (row.original.currencyCode as "USD" | "DOP") ?? "DOP",
-          ),
-      },
-      {
-        accessorKey: "amountResidual",
-        header: "Pendiente",
-        cell: ({ row }) =>
-          row.original.amountResidual > 0
-            ? fmtMoney(
-                row.original.amountResidual,
-                (row.original.currencyCode as "USD" | "DOP") ?? "DOP",
-              )
-            : "—",
-      },
+      ...(canSeeMoney
+        ? ([
+            {
+              accessorKey: "amountTotal",
+              header: "Total",
+              cell: ({ row }: { row: { original: CustomerInvoice } }) =>
+                fmtMoney(
+                  row.original.moveType === "out_refund"
+                    ? -row.original.amountTotal
+                    : row.original.amountTotal,
+                  (row.original.currencyCode as "USD" | "DOP") ?? "DOP",
+                ),
+            },
+            {
+              accessorKey: "amountResidual",
+              header: "Pendiente",
+              cell: ({ row }: { row: { original: CustomerInvoice } }) =>
+                row.original.amountResidual > 0
+                  ? fmtMoney(
+                      row.original.amountResidual,
+                      (row.original.currencyCode as "USD" | "DOP") ?? "DOP",
+                    )
+                  : "—",
+            },
+          ] as ColumnDef<CustomerInvoice, unknown>[])
+        : []),
       {
         accessorKey: "paymentState",
         header: "Pago",
@@ -180,7 +202,7 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
         cell: ({ row }) => fmtDate(row.original.invoiceDateDue),
       },
     ],
-    [],
+    [canSeeMoney],
   );
 
   return (
@@ -235,7 +257,12 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
           <div className={moveTypes.length > 1 && paymentStates.length > 0 ? "lg:col-span-1" : ""}>
             <Label>Ordenar por</Label>
             <Select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-              {SORT_OPTIONS.map((s) => (
+              {(canSeeMoney
+                ? SORT_OPTIONS
+                : SORT_OPTIONS.filter(
+                    (s) => s.value !== "amount_desc" && s.value !== "amount_asc",
+                  )
+              ).map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -267,7 +294,11 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
         data={filteredAndSorted}
         columns={columns}
         rowKey="id"
-        onRowClick={(row) => router.push(`/dashboard/factura/${row.id}` as Route)}
+        onRowClick={
+          canSeeMoney
+            ? (row) => router.push(`/dashboard/factura/${row.id}` as Route)
+            : undefined
+        }
         emptyTitle="Sin facturas con esos filtros"
         emptyDescription="Ajusta los filtros para ver más resultados."
         csvFilename="facturas-cliente.csv"
@@ -275,10 +306,14 @@ export const CustomerInvoicesTable = ({ data }: { data: CustomerInvoice[] }) => 
           name: "Documento",
           invoiceDate: "Fecha",
           moveType: "Tipo",
-          amountUntaxed: "Subtotal",
-          amountTotal: "Total",
-          amountResidual: "Pendiente",
-          currencyCode: "Moneda",
+          ...(canSeeMoney
+            ? {
+                amountUntaxed: "Subtotal",
+                amountTotal: "Total",
+                amountResidual: "Pendiente",
+                currencyCode: "Moneda",
+              }
+            : {}),
           paymentState: "Pago",
           state: "Estado",
           salespersonName: "Vendedor",

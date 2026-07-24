@@ -12,6 +12,7 @@ import { CustomerRevenueChart } from "@/components/sales/customer-revenue-chart"
 import { CustomerInvoicesTable } from "@/components/sales/customer-invoices-table";
 import { ContactCard } from "@/components/sales/contact-card";
 import { getCustomerDetail } from "@/lib/domain/sales/customer-detail";
+import { getRole } from "@/lib/auth/guard";
 import { env } from "@/lib/config/env";
 import { fmtDate, fmtMoney, fmtMoneyMulti, fmtNumber, fmtRelative } from "@/lib/format";
 
@@ -29,7 +30,18 @@ export default async function CustomerDetailPage({ params }: PageProps) {
   const detail = await getCustomerDetail(partnerId);
   if (!detail) notFound();
 
+  const canSeeMoney = (await getRole()) === "admin";
   const { metrics } = detail;
+  // Los montos por factura no viajan al browser si el rol no puede verlos.
+  const visibleInvoices = canSeeMoney
+    ? detail.invoices
+    : detail.invoices.map((i) => ({
+        ...i,
+        amountTotal: 0,
+        amountUntaxed: 0,
+        amountResidual: 0,
+        currencyCode: null,
+      }));
   const odooBaseUrl = env.ODOO_WEB_URL ?? env.ODOO_URL;
   const inactivityTone =
     metrics.daysSinceLast == null
@@ -91,45 +103,67 @@ export default async function CustomerDetailPage({ params }: PageProps) {
               : "Todo cobrado"}
           </CardFooter>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total facturado</CardTitle>
-            <CardValue className="text-base">
-              {fmtMoneyMulti({
-                usd: metrics.totalRevenueUsd,
-                dop: metrics.totalRevenueDop,
-              })}
-            </CardValue>
-          </CardHeader>
-          <CardFooter>
-            {metrics.firstInvoiceDate
-              ? `Desde ${fmtDate(metrics.firstInvoiceDate)}`
-              : "Sin historial"}
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Saldo pendiente</CardTitle>
-            <CardValue className="text-base">
-              {fmtMoneyMulti({
-                usd: metrics.outstandingUsd,
-                dop: metrics.outstandingDop,
-              })}
-            </CardValue>
-          </CardHeader>
-          <CardFooter>Facturas no cobradas</CardFooter>
-        </Card>
+        {canSeeMoney ? (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Total facturado</CardTitle>
+                <CardValue className="text-base">
+                  {fmtMoneyMulti({
+                    usd: metrics.totalRevenueUsd,
+                    dop: metrics.totalRevenueDop,
+                  })}
+                </CardValue>
+              </CardHeader>
+              <CardFooter>
+                {metrics.firstInvoiceDate
+                  ? `Desde ${fmtDate(metrics.firstInvoiceDate)}`
+                  : "Sin historial"}
+              </CardFooter>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Saldo pendiente</CardTitle>
+                <CardValue className="text-base">
+                  {fmtMoneyMulti({
+                    usd: metrics.outstandingUsd,
+                    dop: metrics.outstandingDop,
+                  })}
+                </CardValue>
+              </CardHeader>
+              <CardFooter>Facturas no cobradas</CardFooter>
+            </Card>
+          </>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cliente desde</CardTitle>
+              <CardValue className="text-base">
+                {metrics.firstInvoiceDate ? fmtDate(metrics.firstInvoiceDate) : "—"}
+              </CardValue>
+            </CardHeader>
+            <CardFooter>Primera compra registrada</CardFooter>
+          </Card>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Revenue por mes (24 meses)</CardTitle>
-          </CardHeader>
-          <div className="px-2 pb-4 sm:px-6">
-            <CustomerRevenueChart data={detail.monthly} />
-          </div>
-        </Card>
+      <div
+        className={
+          canSeeMoney
+            ? "grid grid-cols-1 gap-4 lg:grid-cols-3"
+            : "grid grid-cols-1 gap-4"
+        }
+      >
+        {canSeeMoney ? (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Revenue por mes (24 meses)</CardTitle>
+            </CardHeader>
+            <div className="px-2 pb-4 sm:px-6">
+              <CustomerRevenueChart data={detail.monthly} />
+            </div>
+          </Card>
+        ) : null}
         <ContactCard
           partnerId={detail.partnerId}
           name={detail.name}
@@ -153,13 +187,17 @@ export default async function CustomerDetailPage({ params }: PageProps) {
               ? `${Math.round(metrics.avgGapDays)} dias entre compras`
               : "—"}
           </Metric>
-          <Metric label="Ticket promedio (USD)">
-            {metrics.avgTicketUsd ? fmtMoney(metrics.avgTicketUsd, "USD") : "—"}
-          </Metric>
-          <Metric label="Ticket promedio (DOP)">
-            {metrics.avgTicketDop ? fmtMoney(metrics.avgTicketDop, "DOP") : "—"}
-          </Metric>
-          <Metric label="Moneda principal">{metrics.primaryCurrency}</Metric>
+          {canSeeMoney ? (
+            <>
+              <Metric label="Ticket promedio (USD)">
+                {metrics.avgTicketUsd ? fmtMoney(metrics.avgTicketUsd, "USD") : "—"}
+              </Metric>
+              <Metric label="Ticket promedio (DOP)">
+                {metrics.avgTicketDop ? fmtMoney(metrics.avgTicketDop, "DOP") : "—"}
+              </Metric>
+              <Metric label="Moneda principal">{metrics.primaryCurrency}</Metric>
+            </>
+          ) : null}
           <Metric label="Vendedor habitual">
             {metrics.primarySalesperson ?? "—"}
           </Metric>
@@ -176,7 +214,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
           <CardTitle>Historial de facturas ({detail.invoices.length})</CardTitle>
         </CardHeader>
         <div className="px-6 pb-6">
-          <CustomerInvoicesTable data={detail.invoices} />
+          <CustomerInvoicesTable data={visibleInvoices} canSeeMoney={canSeeMoney} />
         </div>
       </Card>
     </div>

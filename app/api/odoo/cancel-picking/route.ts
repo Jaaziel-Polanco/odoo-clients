@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { isAuthenticated } from "@/lib/auth/guard";
+import { isAdmin, isAuthenticated } from "@/lib/auth/guard";
 import { cancelPicking } from "@/lib/odoo/client";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,12 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  }
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { ok: false, error: "Sin permisos para esta operacion" },
+      { status: 403 },
+    );
   }
   let body: unknown;
   try {

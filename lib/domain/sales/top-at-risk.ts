@@ -31,6 +31,11 @@ export type TopRiskSort =
 
 export interface TopAtRiskOptions {
   thresholdDays: number;
+  /**
+   * Ventana propia para la exclusion por cotizacion reciente. Si se omite se
+   * usa thresholdDays (comportamiento historico).
+   */
+  quotationRecencyDays?: number;
   windowMonths?: number;
   limit?: number;
   country?: string;
@@ -70,6 +75,7 @@ const dateClause = (dateFrom?: string, dateTo?: string): SQL => {
 
 export const findTopAtRisk = async ({
   thresholdDays,
+  quotationRecencyDays,
   windowMonths = 24,
   limit = 100,
   country,
@@ -79,6 +85,7 @@ export const findTopAtRisk = async ({
   dateTo,
   sort,
 }: TopAtRiskOptions): Promise<TopAtRiskCustomer[]> => {
+  const recencyDays = quotationRecencyDays ?? thresholdDays;
   const countryClause = country ? sql`AND p.country = ${country}` : sql``;
   const searchClause = search
     ? sql`AND (p.name ILIKE ${"%" + search + "%"} OR p.email ILIKE ${"%" + search + "%"})`
@@ -150,11 +157,13 @@ export const findTopAtRisk = async ({
       ${countryClause}
       ${searchClause}
       ${salespersonClause}
+      -- Excluye a quien ya se esta trabajando: cotizacion u orden no cancelada
+      -- dentro de la ventana configurada.
       AND NOT EXISTS (
         SELECT 1 FROM sale_orders so
         WHERE so.partner_id = p.id
           AND so.state <> 'cancel'
-          AND so.date_order >= CURRENT_DATE - (${thresholdDays}::int * INTERVAL '1 day')
+          AND so.date_order >= CURRENT_DATE - (${recencyDays}::int * INTERVAL '1 day')
       )
       GROUP BY p.id, p.name, p.email, p.phone, p.mobile, p.vat, p.country, p.city
     )

@@ -9,7 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { fmtDate, fmtMoneyMulti, fmtNumber } from "@/lib/format";
 import type { CadenceBreak } from "@/lib/domain/sales/cadence-breaks";
 
-export const CadenceTable = ({ data }: { data: CadenceBreak[] }) => {
+interface CadenceTableProps {
+  data: CadenceBreak[];
+  /** El rol employee no ve montos: se omite la columna y el CSV de revenue. */
+  canSeeMoney?: boolean;
+}
+
+export const CadenceTable = ({ data, canSeeMoney = true }: CadenceTableProps) => {
   const router = useRouter();
   const columns = useMemo<ColumnDef<CadenceBreak, unknown>[]>(
     () => [
@@ -59,17 +65,21 @@ export const CadenceTable = ({ data }: { data: CadenceBreak[] }) => {
         header: "Ultima compra",
         cell: ({ row }) => fmtDate(row.original.lastInvoiceDate),
       },
-      {
-        accessorKey: "totalRevenueUsd",
-        header: "Total historico",
-        cell: ({ row }) =>
-          fmtMoneyMulti({
-            usd: row.original.totalRevenueUsd,
-            dop: row.original.totalRevenueDop,
-          }),
-      },
+      ...(canSeeMoney
+        ? [
+            {
+              accessorKey: "totalRevenueUsd",
+              header: "Total historico",
+              cell: ({ row }: { row: { original: CadenceBreak } }) =>
+                fmtMoneyMulti({
+                  usd: row.original.totalRevenueUsd,
+                  dop: row.original.totalRevenueDop,
+                }),
+            } as ColumnDef<CadenceBreak, unknown>,
+          ]
+        : []),
     ],
-    [],
+    [canSeeMoney],
   );
 
   return (
@@ -94,8 +104,9 @@ export const CadenceTable = ({ data }: { data: CadenceBreak[] }) => {
         overdueRatio: "Vs normal (x)",
         invoiceCount: "# facturas",
         lastInvoiceDate: "Ultima compra",
-        totalRevenueUsd: "Total USD",
-        totalRevenueDop: "Total DOP",
+        ...(canSeeMoney
+          ? { totalRevenueUsd: "Total USD", totalRevenueDop: "Total DOP" }
+          : {}),
       }}
     />
   );

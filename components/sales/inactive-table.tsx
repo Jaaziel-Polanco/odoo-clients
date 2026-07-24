@@ -17,7 +17,13 @@ const toneForDays = (d: number | null): "neutral" | "warning" | "danger" => {
   return "neutral";
 };
 
-export const InactiveTable = ({ data }: { data: InactiveCustomer[] }) => {
+interface InactiveTableProps {
+  data: InactiveCustomer[];
+  /** El rol employee no ve montos: se omite la columna y el CSV de revenue. */
+  canSeeMoney?: boolean;
+}
+
+export const InactiveTable = ({ data, canSeeMoney = true }: InactiveTableProps) => {
   const router = useRouter();
   const columns = useMemo<ColumnDef<InactiveCustomer, unknown>[]>(
     () => [
@@ -69,18 +75,22 @@ export const InactiveTable = ({ data }: { data: InactiveCustomer[] }) => {
         header: "# fact",
         cell: ({ row }) => fmtNumber(row.original.invoiceCount),
       },
-      {
-        accessorKey: "totalRevenueUsd",
-        header: "Total historico",
-        cell: ({ row }) => (
-          <span className="whitespace-nowrap">
-            {fmtMoneyMulti({
-              usd: row.original.totalRevenueUsd,
-              dop: row.original.totalRevenueDop,
-            })}
-          </span>
-        ),
-      },
+      ...(canSeeMoney
+        ? [
+            {
+              accessorKey: "totalRevenueUsd",
+              header: "Total historico",
+              cell: ({ row }: { row: { original: InactiveCustomer } }) => (
+                <span className="whitespace-nowrap">
+                  {fmtMoneyMulti({
+                    usd: row.original.totalRevenueUsd,
+                    dop: row.original.totalRevenueDop,
+                  })}
+                </span>
+              ),
+            } as ColumnDef<InactiveCustomer, unknown>,
+          ]
+        : []),
       {
         id: "actions",
         header: "",
@@ -96,7 +106,7 @@ export const InactiveTable = ({ data }: { data: InactiveCustomer[] }) => {
         ),
       },
     ],
-    [],
+    [canSeeMoney],
   );
 
   return (
@@ -120,8 +130,9 @@ export const InactiveTable = ({ data }: { data: InactiveCustomer[] }) => {
         lastInvoiceDate: "Ultima compra",
         daysSinceLast: "Dias inactivo",
         invoiceCount: "# facturas",
-        totalRevenueUsd: "Total USD",
-        totalRevenueDop: "Total DOP",
+        ...(canSeeMoney
+          ? { totalRevenueUsd: "Total USD", totalRevenueDop: "Total DOP" }
+          : {}),
       }}
     />
   );

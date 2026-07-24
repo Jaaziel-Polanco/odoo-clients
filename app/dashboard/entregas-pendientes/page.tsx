@@ -2,6 +2,7 @@ import { Card, CardHeader, CardTitle, CardValue, CardFooter } from "@/components
 import { PendingDeliveriesTable } from "@/components/sales/pending-deliveries-table";
 import { PendingDeliveriesFilters } from "@/components/sales/pending-deliveries-filters";
 import { fmtNumber } from "@/lib/format";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   findPendingDeliveries,
   type PendingDeliveriesResult,
@@ -14,6 +15,7 @@ interface PageProps {
 export const dynamic = "force-dynamic";
 
 export default async function EntregasPendientesPage({ searchParams }: PageProps) {
+  await requireAdmin();
   const params = await searchParams;
   const minAgeDays = params.min_days ? Number(params.min_days) : undefined;
 

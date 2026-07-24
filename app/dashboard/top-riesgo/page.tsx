@@ -3,6 +3,7 @@ import { TopRiskTable } from "@/components/sales/top-risk-table";
 import { FilterBar } from "@/components/sales/filters/filter-bar";
 import { findTopAtRisk, type TopRiskSort } from "@/lib/domain/sales/top-at-risk";
 import { getAppSettings } from "@/lib/domain/config/app-settings";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   getCountries,
   getSalespersons,
@@ -31,6 +32,7 @@ const SORT_OPTIONS: { value: TopRiskSort; label: string }[] = [
 export const dynamic = "force-dynamic";
 
 export default async function TopRiskPage({ searchParams }: PageProps) {
+  await requireAdmin();
   const params = await searchParams;
   const settings = await getAppSettings();
   const threshold = Number(params.days) || settings.inactivityThresholdDays;
@@ -41,6 +43,7 @@ export default async function TopRiskPage({ searchParams }: PageProps) {
     getSalespersons(),
     findTopAtRisk({
       thresholdDays: threshold,
+      quotationRecencyDays: settings.quotationRecencyDays,
       search: params.q,
       country: params.country,
       salesperson: params.salesperson,

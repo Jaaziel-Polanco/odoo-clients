@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   Card,
   CardHeader,
@@ -48,6 +49,7 @@ const paymentLabel: Record<string, string> = {
 };
 
 export default async function InvoicePage({ params }: PageProps) {
+  await requireAdmin();
   const { id } = await params;
   const invoiceId = Number(id);
   if (!Number.isFinite(invoiceId)) notFound();

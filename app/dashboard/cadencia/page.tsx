@@ -7,6 +7,7 @@ import {
   getCountries,
   getSalespersons,
 } from "@/lib/domain/sales/filter-options";
+import { getRole } from "@/lib/auth/guard";
 
 interface PageProps {
   searchParams: Promise<{
@@ -31,6 +32,7 @@ export const dynamic = "force-dynamic";
 export default async function CadenciaPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const settings = await getAppSettings();
+  const canSeeMoney = (await getRole()) === "admin";
   const sort = (params.sort as CadenceSort | undefined) ?? "ratio_desc";
 
   const [countries, salespersons, data] = await Promise.all([
@@ -48,6 +50,11 @@ export default async function CadenciaPage({ searchParams }: PageProps) {
       sort,
     }),
   ]);
+
+  // Los montos no viajan al browser cuando el rol no puede verlos.
+  const visibleData = canSeeMoney
+    ? data
+    : data.map((d) => ({ ...d, totalRevenueUsd: 0, totalRevenueDop: 0 }));
 
   return (
     <div className="space-y-6">
@@ -72,7 +79,7 @@ export default async function CadenciaPage({ searchParams }: PageProps) {
           <CardTitle>{data.length} clientes con cadencia rota</CardTitle>
         </CardHeader>
         <div className="px-6 pb-6">
-          <CadenceTable data={data} />
+          <CadenceTable data={visibleData} canSeeMoney={canSeeMoney} />
         </div>
       </Card>
     </div>

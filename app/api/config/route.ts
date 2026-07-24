@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth/guard";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   getAppSettings,
   updateAppSettings,
@@ -8,6 +8,7 @@ import {
 
 const patchSchema = z.object({
   inactivityThresholdDays: z.number().int().positive().max(3650).optional(),
+  quotationRecencyDays: z.number().int().positive().max(3650).optional(),
   cadenceOverdueMultiplier: z.number().positive().max(100).optional(),
   revenueDeclineMinDropPct: z.number().min(0).max(100).optional(),
   revenueDeclinePeriodMonths: z.number().int().positive().max(120).optional(),
@@ -17,7 +18,7 @@ const patchSchema = z.object({
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  await requireAuth();
+  await requireAdmin();
   try {
     const settings = await getAppSettings();
     return NextResponse.json({ ok: true, settings });
@@ -30,7 +31,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  await requireAuth();
+  await requireAdmin();
   try {
     const body = await request.json().catch(() => null);
     const parsed = patchSchema.safeParse(body);

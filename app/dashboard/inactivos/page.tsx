@@ -11,6 +11,7 @@ import {
   getCountries,
   getSalespersons,
 } from "@/lib/domain/sales/filter-options";
+import { getRole } from "@/lib/auth/guard";
 
 interface PageProps {
   searchParams: Promise<{
@@ -34,20 +35,29 @@ const SORT_OPTIONS: { value: InactiveSort; label: string }[] = [
   { value: "name_desc", label: "Nombre Z → A" },
 ];
 
+/** Ordenar por revenue revelaria el ranking economico al rol employee. */
+const MONEY_SORTS: InactiveSort[] = ["revenue_desc", "revenue_asc"];
+
 export const dynamic = "force-dynamic";
 
 export default async function InactivosPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const settings = await getAppSettings();
+  const canSeeMoney = (await getRole()) === "admin";
   const threshold = Number(params.days) || settings.inactivityThresholdDays;
   const includeNeverPurchased = params.include_never === "true";
-  const sort = (params.sort as InactiveSort | undefined) ?? "oldest_first";
+  const requestedSort = (params.sort as InactiveSort | undefined) ?? "oldest_first";
+  const sort =
+    !canSeeMoney && MONEY_SORTS.includes(requestedSort)
+      ? "oldest_first"
+      : requestedSort;
 
   const [countries, salespersons, customers, totalForCriteria] = await Promise.all([
     getCountries(),
     getSalespersons(),
     findInactiveCustomers({
       thresholdDays: threshold,
+      quotationRecencyDays: settings.quotationRecencyDays,
       includeNeverPurchased,
       search: params.q,
       country: params.country,
@@ -59,6 +69,7 @@ export default async function InactivosPage({ searchParams }: PageProps) {
     }),
     countInactiveCustomers({
       thresholdDays: threshold,
+      quotationRecencyDays: settings.quotationRecencyDays,
       includeNeverPurchased,
       search: params.q,
       country: params.country,
@@ -67,6 +78,11 @@ export default async function InactivosPage({ searchParams }: PageProps) {
       dateTo: params.date_to,
     }),
   ]);
+
+  // Los montos no viajan al browser cuando el rol no puede verlos.
+  const visibleCustomers = canSeeMoney
+    ? customers
+    : customers.map((c) => ({ ...c, totalRevenueUsd: 0, totalRevenueDop: 0 }));
 
   return (
     <div className="space-y-6">
@@ -85,7 +101,11 @@ export default async function InactivosPage({ searchParams }: PageProps) {
         enabled={["q", "country", "salesperson", "sort", "days", "include_never", "date_range"]}
         countries={countries}
         salespersons={salespersons}
-        sortOptions={SORT_OPTIONS}
+        sortOptions={
+          canSeeMoney
+            ? SORT_OPTIONS
+            : SORT_OPTIONS.filter((o) => !MONEY_SORTS.includes(o.value))
+        }
         defaultSort="oldest_first"
         defaultDays={settings.inactivityThresholdDays}
       />
@@ -100,7 +120,7 @@ export default async function InactivosPage({ searchParams }: PageProps) {
           </CardTitle>
         </CardHeader>
         <div className="px-6 pb-6">
-          <InactiveTable data={customers} />
+          <InactiveTable data={visibleCustomers} canSeeMoney={canSeeMoney} />
         </div>
       </Card>
     </div>

@@ -5,7 +5,12 @@ import { MobileNav } from "./mobile-nav";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-export const Header = async () => {
+export const Header = async ({
+  role = "admin",
+}: {
+  role?: "admin" | "employee";
+}) => {
+  const isAdminRole = role === "admin";
   const status = await getSyncStatus();
   const lastInvoiceSync = status.find((s) => s.resource === "invoices");
   const lastRunAt = lastInvoiceSync?.lastRunAt
@@ -14,7 +19,7 @@ export const Header = async () => {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/95 sm:px-6">
       <div className="flex items-center gap-2 min-w-0">
-        <MobileNav />
+        <MobileNav role={role} />
         <div className="min-w-0 text-sm text-zinc-500 dark:text-zinc-400">
           {lastRunAt ? (
             <>
@@ -32,7 +37,7 @@ export const Header = async () => {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <SyncButton />
+        {isAdminRole ? <SyncButton /> : null}
         <LogoutButton />
       </div>
     </header>

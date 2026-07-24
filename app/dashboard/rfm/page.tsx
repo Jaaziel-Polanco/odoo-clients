@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { InfoHint } from "@/components/ui/info-hint";
 import { RfmTable } from "@/components/sales/rfm-table";
 import { FilterBar } from "@/components/sales/filters/filter-bar";
+import { requireAdmin } from "@/lib/auth/guard";
 import {
   computeRfm,
   summarizeRfmSegments,
@@ -21,6 +22,7 @@ interface PageProps {
 export const dynamic = "force-dynamic";
 
 export default async function RfmPage({ searchParams }: PageProps) {
+  await requireAdmin();
   const params = await searchParams;
   const settings = await getAppSettings();
   const [countries, salespersons, rows] = await Promise.all([

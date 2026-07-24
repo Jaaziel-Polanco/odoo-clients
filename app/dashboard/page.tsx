@@ -8,16 +8,25 @@ import { computeRfm, summarizeRfmSegments } from "@/lib/domain/sales/rfm-segment
 import { RevenueTrendChart } from "@/components/charts/revenue-trend-chart";
 import { SegmentDonutChart } from "@/components/charts/segment-donut-chart";
 import { TopRiskPreview } from "@/components/sales/top-risk-preview";
+import { requireAdmin } from "@/lib/auth/guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  await requireAdmin();
   const settings = await getAppSettings();
   const [overview, revenueByMonth, inactiveCount, topRisk, rfmRows] = await Promise.all([
     getSalesOverview(),
     getRevenueByMonth(12),
-    countInactiveCustomers({ thresholdDays: settings.inactivityThresholdDays }),
-    findTopAtRisk({ thresholdDays: settings.inactivityThresholdDays, limit: 5 }),
+    countInactiveCustomers({
+      thresholdDays: settings.inactivityThresholdDays,
+      quotationRecencyDays: settings.quotationRecencyDays,
+    }),
+    findTopAtRisk({
+      thresholdDays: settings.inactivityThresholdDays,
+      quotationRecencyDays: settings.quotationRecencyDays,
+      limit: 5,
+    }),
     computeRfm({ windowMonths: settings.rfmWindowMonths }),
   ]);
 

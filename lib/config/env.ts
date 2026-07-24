@@ -14,6 +14,14 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   APP_PASSWORD: z.string().min(4),
+  // Password del usuario restringido (seguimiento de inactivos, sin data
+  // economica). Opcional: si no se define, ese acceso simplemente no existe.
+  // El preprocess trata "" como ausente: docker-compose exporta la variable
+  // vacia cuando no esta en el .env y si no, fallaria el min(4).
+  EMPLOYEE_PASSWORD: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().min(4).optional(),
+  ),
   SESSION_SECRET: z
     .string()
     .min(32, "SESSION_SECRET debe tener al menos 32 caracteres"),
@@ -45,6 +53,7 @@ const STUB_ENV: Env = {
   ODOO_API_KEY: "placeholder",
   DATABASE_URL: "postgres://placeholder@localhost:5432/placeholder",
   APP_PASSWORD: "placeholder",
+  EMPLOYEE_PASSWORD: undefined,
   SESSION_SECRET: "x".repeat(32),
   INACTIVITY_DEFAULT_DAYS: 90,
   SYNC_CRON: "5 * * * *",

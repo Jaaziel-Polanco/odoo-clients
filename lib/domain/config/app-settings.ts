@@ -5,6 +5,12 @@ import { env } from "@/lib/config/env";
 
 export interface AppSettings {
   inactivityThresholdDays: number;
+  /**
+   * Ventana para considerar "reciente" una cotizacion u orden. Si el cliente
+   * tuvo una dentro de estos dias, no se lista como inactivo/perdido: alguien
+   * ya lo esta trabajando. Es independiente del umbral de inactividad.
+   */
+  quotationRecencyDays: number;
   cadenceOverdueMultiplier: number;
   revenueDeclineMinDropPct: number;
   revenueDeclinePeriodMonths: number;
@@ -13,6 +19,7 @@ export interface AppSettings {
 
 const DEFAULTS = (): AppSettings => ({
   inactivityThresholdDays: env.INACTIVITY_DEFAULT_DAYS,
+  quotationRecencyDays: 90,
   cadenceOverdueMultiplier: 1.5,
   revenueDeclineMinDropPct: 20,
   revenueDeclinePeriodMonths: 3,
