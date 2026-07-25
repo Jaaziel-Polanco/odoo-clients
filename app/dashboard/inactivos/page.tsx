@@ -44,7 +44,14 @@ export default async function InactivosPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const settings = await getAppSettings();
   const canSeeMoney = (await getRole()) === "admin";
-  const threshold = Number(params.days) || settings.inactivityThresholdDays;
+  // El umbral configurado es un piso: el filtro solo puede endurecer la
+  // busqueda. Asi nunca aparece un cliente que compro mas reciente que lo
+  // definido en Configuracion, aunque manipulen ?days= en la URL.
+  const requestedDays = Number(params.days);
+  const threshold =
+    Number.isFinite(requestedDays) && requestedDays > 0
+      ? Math.max(requestedDays, settings.inactivityThresholdDays)
+      : settings.inactivityThresholdDays;
   const includeNeverPurchased = params.include_never === "true";
   const requestedSort = (params.sort as InactiveSort | undefined) ?? "oldest_first";
   const sort =
@@ -108,6 +115,7 @@ export default async function InactivosPage({ searchParams }: PageProps) {
         }
         defaultSort="oldest_first"
         defaultDays={settings.inactivityThresholdDays}
+        minDays={settings.inactivityThresholdDays}
       />
 
       <Card>

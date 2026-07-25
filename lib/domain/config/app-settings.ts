@@ -8,7 +8,8 @@ export interface AppSettings {
   /**
    * Ventana para considerar "reciente" una cotizacion u orden. Si el cliente
    * tuvo una dentro de estos dias, no se lista como inactivo/perdido: alguien
-   * ya lo esta trabajando. Es independiente del umbral de inactividad.
+   * ya lo esta trabajando. Si nunca se configuro explicitamente sigue al
+   * umbral de inactividad (ver getAppSettings).
    */
   quotationRecencyDays: number;
   cadenceOverdueMultiplier: number;
@@ -35,7 +36,13 @@ export const getAppSettings = async (): Promise<AppSettings> => {
     .where(sql`${appConfig.key} = ${CONFIG_KEY}`)
     .limit(1);
   const stored = rows[0]?.value as Partial<AppSettings> | undefined;
-  return { ...DEFAULTS(), ...(stored ?? {}) };
+  const merged = { ...DEFAULTS(), ...(stored ?? {}) };
+  // Config guardada antes de existir este campo (o nunca tocado): la ventana
+  // de cotizacion sigue al umbral de inactividad en vez de un 90 sorpresa.
+  if (stored?.quotationRecencyDays == null) {
+    merged.quotationRecencyDays = merged.inactivityThresholdDays;
+  }
+  return merged;
 };
 
 export const updateAppSettings = async (patch: Partial<AppSettings>): Promise<AppSettings> => {

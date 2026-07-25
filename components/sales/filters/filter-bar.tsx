@@ -29,6 +29,11 @@ export interface FilterBarProps {
   dayPresets?: number[];
   defaultDays?: number;
   defaultSort?: string;
+  /**
+   * Piso de dias segun Configuracion. El filtro solo puede endurecer la
+   * busqueda, nunca mostrar clientes mas recientes que lo configurado.
+   */
+  minDays?: number;
 }
 
 const DEFAULT_DAY_PRESETS = [30, 60, 90, 180, 365];
@@ -82,6 +87,7 @@ export const FilterBar = ({
   dayPresets = DEFAULT_DAY_PRESETS,
   defaultDays,
   defaultSort,
+  minDays,
 }: FilterBarProps) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -242,7 +248,7 @@ export const FilterBar = ({
             <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
               Inactivos hace más de:
             </span>
-            {dayPresets.map((d) => {
+            {(minDays ? dayPresets.filter((d) => d >= minDays) : dayPresets).map((d) => {
               const current = Number(get("days")) || defaultDays;
               const active = current === d;
               return (
@@ -261,13 +267,18 @@ export const FilterBar = ({
             })}
             <Input
               type="number"
-              min={1}
+              min={minDays ?? 1}
               max={3650}
               placeholder="Otro"
               value={get("days")}
               onChange={(e) => set({ days: e.target.value || null })}
               className="h-8 w-20 text-xs"
             />
+            {minDays ? (
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                mínimo {minDays}d según Configuración
+              </span>
+            ) : null}
           </div>
 
           {enabled.includes("include_never") ? (

@@ -35,7 +35,12 @@ export default async function TopRiskPage({ searchParams }: PageProps) {
   await requireAdmin();
   const params = await searchParams;
   const settings = await getAppSettings();
-  const threshold = Number(params.days) || settings.inactivityThresholdDays;
+  // Mismo criterio que Inactivos: el umbral configurado es un piso.
+  const requestedDays = Number(params.days);
+  const threshold =
+    Number.isFinite(requestedDays) && requestedDays > 0
+      ? Math.max(requestedDays, settings.inactivityThresholdDays)
+      : settings.inactivityThresholdDays;
   const sort = (params.sort as TopRiskSort | undefined) ?? "risk_desc";
 
   const [countries, salespersons, customers] = await Promise.all([
@@ -71,6 +76,7 @@ export default async function TopRiskPage({ searchParams }: PageProps) {
         sortOptions={SORT_OPTIONS}
         defaultSort="risk_desc"
         defaultDays={settings.inactivityThresholdDays}
+        minDays={settings.inactivityThresholdDays}
       />
 
       <Card>
